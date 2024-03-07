@@ -1,5 +1,6 @@
 import pygame
 from pygame import mixer
+import time
 pygame.init()
 
 WIDTH = 1400
@@ -26,7 +27,7 @@ def draw_grid(clicks, beat, actives, volume):
     boxes = []
     colors = [gray, white, gray]
 
-    text_labels = ['Hi Hat', 'Snare', 'Kick', 'Crash', 'Clap', 'Tom',]
+    text_labels = ['Hi Hat', 'Snare', 'Kick', 'Crash', 'Clap', 'Bass',]
     index = [0,1,2,3,4,5]
     text_positions = [(30, i*100 + 30) for i in range(len(text_labels))]
     for label, pos, num in zip(text_labels, text_positions,index ):
@@ -55,6 +56,10 @@ def draw_grid(clicks, beat, actives, volume):
             boxes.append((rect, (i,j)))
 
             active = pygame.draw.rect(screen,blue, [beat*((WIDTH-200)//beats)+200, 0, (WIDTH-200)//beats, instruments*100],5,3)
+            if j == 5:
+                current_note = notes[note_indices[i]]
+                note_text = label_font.render(current_note, True, white)
+                screen.blit(note_text, (i * ((WIDTH - 200)//beats) + 220, j * 100 + 20))  # Adjust position as needed
     return(boxes)
 
 def draw_save_menu():
@@ -91,21 +96,23 @@ file = open('saved_beats.txt','r')
 for line in file:
     saved_beats.append(line)
 
+notes = ['C','C#', 'D','D#', 'E', 'F','F#', 'G','G#', 'A','A#', 'B', 'C']
+note_indices = [0 for _ in range(beats)] 
+
 # SOUNDS
 hi_hat = mixer.Sound('sounds/hi hat.WAV')
 snare = mixer.Sound('sounds/snare.WAV')
 kick = mixer.Sound('sounds/kick.WAV')
 crash = mixer.Sound('sounds/crash.wav')
 clap = mixer.Sound('sounds/clap.wav')
-tom = mixer.Sound("sounds/tom.WAV")
 
-# Volume control for each instrument (range 0.0 - 1.0)
 volume = [10, 10, 10, 10, 10, 10]
 
 def play_notes():
     for i in range(len(clicked)):
         if clicked[i][active_beat] == 1 and active_list[i] == 1:
             # Set volume for each instrument
+
             if i == 0:
                 hi_hat.set_volume(volume[i]/10)
                 hi_hat.play()
@@ -122,8 +129,12 @@ def play_notes():
                 clap.set_volume(volume[i]/10)
                 clap.play()
             if i == 5:
-                tom.set_volume(volume[i]/10)
-                tom.play()
+                sound_index = note_indices[active_beat] % len(notes)
+                sound = mixer.Sound(f"sounds/BASS Notes/{notes[sound_index]}.wav")
+                sound.play()
+                sound.set_volume(volume[i]/10)
+    
+            
 
 
 # GAME
@@ -213,12 +224,21 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-        if event.type == pygame.MOUSEBUTTONDOWN and not save_menu and not load_menu:
+        if pygame.key.get_mods() & pygame.KMOD_SHIFT:  # Check if Shift key is pressed
+            if event.type == pygame.MOUSEBUTTONDOWN and not save_menu and not load_menu:
+                for i in range(len(boxes)):
+                    if boxes[i][0].colliderect(pygame.Rect(event.pos[0], event.pos[1], 1, 1)):
+                        coords = boxes[i][1]
+                        # Shift+click increments the note index and cycles through the notes
+                        if coords[1] == 5:  # Check if the clicked instrument is Tom
+                            note_indices[coords[0]] = (note_indices[coords[0]] + 1) % len(notes)
+        elif event.type == pygame.MOUSEBUTTONDOWN and not save_menu and not load_menu:
             for i in range(len(boxes)):
                 if boxes[i][0].colliderect(pygame.Rect(event.pos[0], event.pos[1], 1, 1)):
                     coords = boxes[i][1]
                     clicked[coords[1]][coords[0]] *= -1
-        if event.type == pygame.MOUSEBUTTONUP and not save_menu and not load_menu:
+        
+        elif event.type == pygame.MOUSEBUTTONUP and not save_menu and not load_menu:
             if play_pause.collidepoint(event.pos):
                 if playing:
                     playing = False
@@ -232,19 +252,25 @@ while run:
                 bpm -=5
             elif beats_add_rect.collidepoint(event.pos):
                 beats += 1
+                if beats > len(note_indices):
+                    note_indices.extend([0] * (beats - len(note_indices)))
                 for i in range(len(clicked)):
                     clicked[i].append(-1)
+            
             elif beats_sub_rect.collidepoint(event.pos):
                 beats -= 1 
                 for i in range(len(clicked)):
                     clicked[i].pop(-1)
+                if beats < len(note_indices):
+                    note_indices = note_indices[:beats]
+    
             elif clear_button.collidepoint(event.pos):
                 clicked = [[-1 for _ in range(beats)] for _ in range(instruments)]
             elif save_button.collidepoint(event.pos):
                 save_menu = True
             elif load_button.collidepoint(event.pos):
                 load_menu = True
-
+        
             # Adjust volume on click
             for i, rect in enumerate(volume_list):
                 if rect.collidepoint(event.pos):
