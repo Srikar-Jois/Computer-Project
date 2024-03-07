@@ -18,7 +18,9 @@ pygame.display.set_caption("Beat Maker")
 label_font = pygame.font.Font('Arial Rounded Bold.ttf', 32)
 medium_font = pygame.font.Font('Arial Rounded Bold.ttf', 24)
 
-def draw_grid(clicks, beat, actives):
+
+
+def draw_grid(clicks, beat, actives, volume):
     left_box = pygame.draw.rect(screen , gray , [0, 0, 200, HEIGHT-200], 5)
     bottom_box = pygame.draw.rect(screen , gray , [0, HEIGHT-200, WIDTH, 200], 5)
     boxes = []
@@ -55,6 +57,19 @@ def draw_grid(clicks, beat, actives):
             active = pygame.draw.rect(screen,blue, [beat*((WIDTH-200)//beats)+200, 0, (WIDTH-200)//beats, instruments*100],5,3)
     return(boxes)
 
+def draw_save_menu():
+    pygame.draw.rect(screen,black,[0,0,WIDTH,HEIGHT])
+    exit_btn = pygame.draw.rect(screen,gray,[WIDTH-200, HEIGHT-100, 180, 90],0,5)
+    exit_text = label_font.render('Close',True,white)
+    screen.blit(exit_text, (WIDTH-160,HEIGHT-70))
+    return exit_btn
+
+def draw_load_menu():
+    pygame.draw.rect(screen,black,[0,0,WIDTH,HEIGHT])
+    exit_btn = pygame.draw.rect(screen,gray,[WIDTH-200, HEIGHT-100, 180, 90],0,5)
+    exit_text = label_font.render('Close',True,white)
+    screen.blit(exit_text, (WIDTH-160,HEIGHT-70))
+    return exit_btn
 
 
 fps = 60
@@ -69,8 +84,14 @@ playing = True
 active_length = 0
 active_beat = 0
 beat_changed = True
+save_menu = False
+load_menu = False
+saved_beats = []
+file = open('saved_beats.txt','r')
+for line in file:
+    saved_beats.append(line)
 
-#SOUNDS
+# SOUNDS
 hi_hat = mixer.Sound('sounds/hi hat.WAV')
 snare = mixer.Sound('sounds/snare.WAV')
 kick = mixer.Sound('sounds/kick.WAV')
@@ -78,31 +99,41 @@ crash = mixer.Sound('sounds/crash.wav')
 clap = mixer.Sound('sounds/clap.wav')
 tom = mixer.Sound("sounds/tom.WAV")
 
+# Volume control for each instrument (range 0.0 - 1.0)
+volume = [10, 10, 10, 10, 10, 10]
+
 def play_notes():
     for i in range(len(clicked)):
         if clicked[i][active_beat] == 1 and active_list[i] == 1:
+            # Set volume for each instrument
             if i == 0:
+                hi_hat.set_volume(volume[i]/10)
                 hi_hat.play()
             if i == 1:
+                snare.set_volume(volume[i]/10)
                 snare.play()
             if i == 2:
+                kick.set_volume(volume[i]/10)
                 kick.play()
             if i == 3:
+                crash.set_volume(volume[i]/10)
                 crash.play()
             if i == 4:
+                clap.set_volume(volume[i]/10)
                 clap.play()
             if i == 5:
+                tom.set_volume(volume[i]/10)
                 tom.play()
 
 
-#GAME
+# GAME
 run = True
 while run:
     timer.tick(fps)
     screen.fill(black)
-    boxes = draw_grid(clicked, active_beat, active_list)
+    boxes = draw_grid(clicked, active_beat, active_list, volume)
 
-    #LOWER MENU
+    # LOWER MENU
     play_pause = pygame.draw.rect(screen, gray, [50, HEIGHT-150,200,100],0,5)
     play_text = label_font.render('Play/Pause',True,white)
     screen.blit(play_text, (70, HEIGHT-130))
@@ -112,7 +143,7 @@ while run:
         play_text2 = medium_font.render('Paused', True, dark_gray)
     screen.blit(play_text2, (70, HEIGHT-90))
 
-    #BPM
+    # BPM
     bpm_rect = pygame.draw.rect(screen,gray,[300,HEIGHT-150,200,100],5,5)
     bpm_text = medium_font.render("Beats Per Min",True,white)
     screen.blit(bpm_text,(318,HEIGHT-130))
@@ -125,7 +156,7 @@ while run:
     screen.blit(add_text,(520,HEIGHT-140))
     screen.blit(sub_text,(520,HEIGHT-90))
 
-    #BEATS
+    # BEATS
     beats_rect = pygame.draw.rect(screen,gray,[600,HEIGHT-150,200,100],5,5)
     beats_text = medium_font.render("Beats In Loop",True,white)
     screen.blit(beats_text,(618,HEIGHT-130))
@@ -138,12 +169,42 @@ while run:
     screen.blit(beatsadd_text,(820,HEIGHT-140))
     screen.blit(beatssub_text,(820,HEIGHT-90))
 
-    #INSTRUMENTS
+    # INSTRUMENTS
     instrument_rects = []
     for i in range(instruments):
         rect = pygame.rect.Rect((0,i*100),(200,100))
         instrument_rects.append(rect)
+    
+    #VOLUME
+    volume_list = []
+    text_labels = ['Hi Hat', 'Snare', 'Kick', 'Crash', 'Clap', 'Tom',]
+    index = [0,1,2,3,4,5]
+    text_positions = [(30, i*100 + 30) for i in range(len(text_labels))]
+    for pos, num in zip(text_positions,index ):
+        # Draw volume button
+        volume_button_rect = pygame.Rect(150, pos[1], 40, 40)
+        pygame.draw.rect(screen, gray, volume_button_rect,0,5)
+        volume_list.append(volume_button_rect)
+        vol_text = medium_font.render(f'{int(volume[num])}',True,white)
+        screen.blit(vol_text,(150, pos[1]+5))
 
+    # SAVE AND LOAD
+    save_button = pygame.draw.rect(screen,gray,[900,HEIGHT-150,200,48],0,5)
+    load_button = pygame.draw.rect(screen,gray,[900,HEIGHT-100,200,48],0,5)
+    save_text = label_font.render("Save Beat",True,white)
+    load_text = label_font.render("Load Beat",True,white)
+    screen.blit(save_text,(920,HEIGHT-140))
+    screen.blit(load_text,(920,HEIGHT-90))
+
+    # CLEAR BOARD
+    clear_button = pygame.draw.rect(screen,gray,[1150,HEIGHT-150,200,100],0,5)
+    clear_text = label_font.render("Clear Board",True,white)
+    screen.blit(clear_text,(1160,HEIGHT-120))
+
+    if save_menu:
+        exit_button = draw_save_menu()
+    if load_menu:
+        exit_button = draw_load_menu()
 
     if beat_changed:
         play_notes()
@@ -152,12 +213,12 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN and not save_menu and not load_menu:
             for i in range(len(boxes)):
                 if boxes[i][0].colliderect(pygame.Rect(event.pos[0], event.pos[1], 1, 1)):
                     coords = boxes[i][1]
                     clicked[coords[1]][coords[0]] *= -1
-        if event.type == pygame.MOUSEBUTTONUP:
+        if event.type == pygame.MOUSEBUTTONUP and not save_menu and not load_menu:
             if play_pause.collidepoint(event.pos):
                 if playing:
                     playing = False
@@ -173,16 +234,30 @@ while run:
                 beats += 1
                 for i in range(len(clicked)):
                     clicked[i].append(-1)
-
             elif beats_sub_rect.collidepoint(event.pos):
                 beats -= 1 
                 for i in range(len(clicked)):
                     clicked[i].pop(-1)
+            elif clear_button.collidepoint(event.pos):
+                clicked = [[-1 for _ in range(beats)] for _ in range(instruments)]
+            elif save_button.collidepoint(event.pos):
+                save_menu = True
+            elif load_button.collidepoint(event.pos):
+                load_menu = True
 
+            # Adjust volume on click
+            for i, rect in enumerate(volume_list):
+                if rect.collidepoint(event.pos):
+                    if volume[i] < 10:
+                        volume[i] += 1
+                    else:
+                        volume[i] = 0
 
-            for i in range(len(instrument_rects)):
-                if instrument_rects[i].collidepoint(event.pos):
-                    active_list[i] *= -1
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if exit_button.collidepoint(event.pos):
+                save_menu = False
+                load_menu = False
+                playing = True
                 
     beat_length = fps * 60 // bpm
 
