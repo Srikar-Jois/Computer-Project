@@ -209,8 +209,8 @@ while run:
 
     # CLEAR BOARD
     clear_button = pygame.draw.rect(screen,gray,[1150,HEIGHT-150,200,100],0,5)
-    clear_text = label_font.render("Clear Board",True,white)
-    screen.blit(clear_text,(1160,HEIGHT-120))
+    clear_text = label_font.render("RESET",True,white)
+    screen.blit(clear_text,(1190,HEIGHT-120))
 
     if save_menu:
         exit_button = draw_save_menu()
@@ -266,6 +266,7 @@ while run:
     
             elif clear_button.collidepoint(event.pos):
                 clicked = [[-1 for _ in range(beats)] for _ in range(instruments)]
+                note_indices = [0] * beats 
             elif save_button.collidepoint(event.pos):
                 save_menu = True
             elif load_button.collidepoint(event.pos):
