@@ -9,10 +9,12 @@ HEIGHT = 800
 black = (0,0,0)
 white = (255,255,255)
 gray = (128,128,128)
+light_gray = (170,170,170)
 dark_gray = (50,50,50)
 green = (0,255,0)
 gold = (212,175,55)
 blue = (0, 255, 255)
+
 
 screen = pygame.display.set_mode([WIDTH,HEIGHT])
 pygame.display.set_caption("Beat Maker")
@@ -28,9 +30,9 @@ def draw_grid(clicks, beat, actives, volume):
     colors = [gray, white, gray]
 
     text_labels = ['Hi Hat', 'Snare', 'Kick', 'Crash', 'Clap', 'Bass',]
-    index = [0,1,2,3,4,5]
+    index1 = [0,1,2,3,4,5]
     text_positions = [(30, i*100 + 30) for i in range(len(text_labels))]
-    for label, pos, num in zip(text_labels, text_positions,index ):
+    for label, pos, num in zip(text_labels, text_positions,index1):
         text_surface = label_font.render(label, True, colors[actives[num]])
         screen.blit(text_surface, pos)
 
@@ -62,21 +64,81 @@ def draw_grid(clicks, beat, actives, volume):
                 screen.blit(note_text, (i * ((WIDTH - 200)//beats) + 220, j * 100 + 20))  # Adjust position as needed
     return(boxes)
 
-def draw_save_menu():
+def draw_save_menu(beat_name,typing):
     pygame.draw.rect(screen,black,[0,0,WIDTH,HEIGHT])
+    menu_text = label_font.render('Save Menu : Enter name for current Beat',True,white)
+    saving_btn = pygame.draw.rect(screen,gray,[WIDTH//2 - 200,HEIGHT*0.75,400,100],0,5)
+    saving_txt = label_font.render('Save Beat',True,white)
+    screen.blit(saving_txt,(WIDTH//2-75,HEIGHT*0.75+30))
+    screen.blit(menu_text,(400,40))
     exit_btn = pygame.draw.rect(screen,gray,[WIDTH-200, HEIGHT-100, 180, 90],0,5)
     exit_text = label_font.render('Close',True,white)
     screen.blit(exit_text, (WIDTH-160,HEIGHT-70))
-    return exit_btn
+    if typing:
+        pygame.draw.rect(screen,dark_gray,[400, 200, 600, 200],0,5)
+    entry_rect = pygame.draw.rect(screen,gray,[400,200,600,200],5,5)
+    entry_txt = label_font.render(f'{beat_name}',True,white)
+    screen.blit(entry_txt,(430,250))
+    return exit_btn, saving_btn, entry_rect
 
-def draw_load_menu():
+def draw_load_menu(index):
+    global volume, notes
+    loaded_clicked = []
+    loaded_beats = 0
+    loaded_bpm = 0
     pygame.draw.rect(screen,black,[0,0,WIDTH,HEIGHT])
+    menu_text = label_font.render('Load Menu : Select Beat to Load',True,white)
+    loading_btn = pygame.draw.rect(screen,gray,[WIDTH//2 - 200,HEIGHT*0.87,400,100],0,5)
+    loading_txt = label_font.render('Load Beat',True,white)
+    screen.blit(loading_txt,(WIDTH//2-75,HEIGHT*0.87+30))
+    delete_btn = pygame.draw.rect(screen,gray,[(WIDTH//2)-500, HEIGHT * 0.87,200,100],0,5)
+    delete_txt = label_font.render("Delete Beat", True, white)
+    screen.blit(delete_txt,(WIDTH//2-485, HEIGHT * 0.87 + 30))
+    screen.blit(menu_text,(400,40))
     exit_btn = pygame.draw.rect(screen,gray,[WIDTH-200, HEIGHT-100, 180, 90],0,5)
     exit_text = label_font.render('Close',True,white)
     screen.blit(exit_text, (WIDTH-160,HEIGHT-70))
-    return exit_btn
+    loaded_rectangle = pygame.draw.rect(screen,gray,[190, 90, 1000, 600],5,5)
+    if 0 <= index < len(saved_beats):
+        pygame.draw.rect(screen,light_gray,[190,100+index*50,1000,50])
+    for beat in range(len(saved_beats)):
+        if beat < 10:
+            beat_clicked = []
+            row_text = medium_font.render(f'{beat + 1}', True, white)
+            screen.blit(row_text, (200, 100 + beat * 50))
+            name_index_start = saved_beats[beat].index('name:') + 6
+            name_index_end = saved_beats[beat].index(", beats: ")
+            name_text = medium_font.render(saved_beats[beat][name_index_start:name_index_end], True, white)
+            screen.blit(name_text, (240, 100 + beat * 50))
+        if 0 <= index < len(saved_beats) and beat == index:
+            beats_index_end = saved_beats[beat].index(', bpm:')
+            loaded_beats = int(saved_beats[beat][name_index_end + 8:beats_index_end])
+            bpm_index_end = saved_beats[beat].index(', selected:')
+            loaded_bpm_start = saved_beats[beat].index('bpm:') + 5
+            loaded_bpm_end = saved_beats[beat].index(',volume:')
+            loaded_bpm = int(saved_beats[beat][loaded_bpm_start:loaded_bpm_end].strip())
+            loaded_clicks_string = saved_beats[beat][bpm_index_end + 14: -3]
+            loaded_clicks_rows = list(loaded_clicks_string.split("], ["))
+            loaded_volume_start = saved_beats[beat].index('volume:') + 8
+            loaded_volume_end = saved_beats[beat].index(', selected')+1
+            loaded_volume_string = saved_beats[beat][loaded_volume_start+1:loaded_volume_end-2]
+            loaded_volume = [int(vol) for vol in loaded_volume_string.strip().strip('[]').split(", ")]
 
+            # Assign the loaded volume data to the 'volume' variable
+            volume = loaded_volume
 
+            for row in range(len(loaded_clicks_rows)):
+                loaded_clicks_row = (loaded_clicks_rows[row].split(', '))
+                for item in range(len(loaded_clicks_row)):
+                    if loaded_clicks_row[item] == '1' or loaded_clicks_row[item] == '-1':
+                        loaded_clicks_row[item] = int(loaded_clicks_row[item])
+                beat_clicked.append(loaded_clicks_row)
+                loaded_clicked = beat_clicked
+    loaded_info = [loaded_beats, loaded_bpm, loaded_clicked]
+    entry_rectangle = pygame.draw.rect(screen, gray, [190, 90, 1000, 600], 5, 5)
+    return exit_btn, loading_btn, entry_rectangle,delete_btn, loaded_rectangle, loaded_info
+
+index = 100
 fps = 60
 timer = pygame.time.Clock()
 beats = 8
@@ -98,6 +160,8 @@ for line in file:
 
 notes = ['C','C#', 'D','D#', 'E', 'F','F#', 'G','G#', 'A','A#', 'B', 'C']
 note_indices = [0 for _ in range(beats)] 
+beat_name = ''
+typing = False
 
 # SOUNDS
 hi_hat = mixer.Sound('sounds/hi hat.WAV')
@@ -189,9 +253,9 @@ while run:
     #VOLUME
     volume_list = []
     text_labels = ['Hi Hat', 'Snare', 'Kick', 'Crash', 'Clap', 'Tom',]
-    index = [0,1,2,3,4,5]
+    index2 = [0,1,2,3,4,5]
     text_positions = [(30, i*100 + 30) for i in range(len(text_labels))]
-    for pos, num in zip(text_positions,index ):
+    for pos, num in zip(text_positions,index2 ):
         # Draw volume button
         volume_button_rect = pygame.Rect(150, pos[1], 40, 40)
         pygame.draw.rect(screen, gray, volume_button_rect,0,5)
@@ -199,7 +263,7 @@ while run:
         vol_text = medium_font.render(f'{int(volume[num])}',True,white)
         screen.blit(vol_text,(150, pos[1]+5))
 
-    # SAVE AND LOAD
+    # SAVE AND LOAD DRAW
     save_button = pygame.draw.rect(screen,gray,[900,HEIGHT-150,200,48],0,5)
     load_button = pygame.draw.rect(screen,gray,[900,HEIGHT-100,200,48],0,5)
     save_text = label_font.render("Save Beat",True,white)
@@ -212,10 +276,11 @@ while run:
     clear_text = label_font.render("RESET",True,white)
     screen.blit(clear_text,(1190,HEIGHT-120))
 
+    #SAVE and LOAD
     if save_menu:
-        exit_button = draw_save_menu()
+        exit_button, saving_button, entry_rectangle = draw_save_menu(beat_name, typing)
     if load_menu:
-        exit_button = draw_load_menu()
+        exit_button,loading_button, entry_rectangle ,delete_button, loaded_rectangle, loaded_info  = draw_load_menu(index)
 
     if beat_changed:
         play_notes()
@@ -224,13 +289,12 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-        if pygame.key.get_mods() & pygame.KMOD_SHIFT:  # Check if Shift key is pressed
+        if pygame.key.get_mods() & pygame.KMOD_SHIFT:  
             if event.type == pygame.MOUSEBUTTONDOWN and not save_menu and not load_menu:
                 for i in range(len(boxes)):
                     if boxes[i][0].colliderect(pygame.Rect(event.pos[0], event.pos[1], 1, 1)):
                         coords = boxes[i][1]
-                        # Shift+click increments the note index and cycles through the notes
-                        if coords[1] == 5:  # Check if the clicked instrument is Tom
+                        if coords[1] == 5: 
                             note_indices[coords[0]] = (note_indices[coords[0]] + 1) % len(notes)
         elif event.type == pygame.MOUSEBUTTONDOWN and not save_menu and not load_menu:
             for i in range(len(boxes)):
@@ -285,6 +349,62 @@ while run:
                 save_menu = False
                 load_menu = False
                 playing = True
+                typing = False
+                beat_name = ''
+            if entry_rectangle.collidepoint(event.pos):
+                if save_menu:
+                    if typing:
+                        typing = False
+                    else:
+                        typing = True
+                if load_menu:
+                    index = (event.pos[1] - 100) // 50
+            if save_menu:
+                if saving_button.collidepoint(event.pos):
+                    file = open('saved_beats.txt', 'w')
+                    saved_beats.append(f'\nname: {beat_name}, beats: {beats}, bpm: {bpm},volume: {volume}, selected: {clicked}, bass_notes: {note_indices}')
+                    for i in range(len(saved_beats)):
+                        file.write(str(saved_beats[i]))
+                    file.close()
+                    save_menu = False
+                    load_menu = False
+                    playing = True
+                    typing = False
+                    beat_name = ''
+            if load_menu:
+                if delete_button.collidepoint(event.pos):
+                    if 0 <= index < len(saved_beats):
+                        saved_beats.pop(index)
+                if loading_button.collidepoint(event.pos):
+                    if 0 <= index < len(saved_beats):
+                        loaded_info = saved_beats[index]
+                        beats_index_start = loaded_info.index('beats:') + 7
+                        beats_index_end = loaded_info.index(', bpm:')
+                        beats = int(loaded_info[beats_index_start:beats_index_end])
+                        bpm_index_start = loaded_info.index('bpm:') + 5
+                        bpm_index_end = loaded_info.index(',volume:')
+                        bpm = int(loaded_info[bpm_index_start:bpm_index_end])
+                        volume_index_start = loaded_info.index('volume:') + 8
+                        volume_index_end = loaded_info.index(', selected:')
+                        volume_string = loaded_info[volume_index_start:volume_index_end].strip().strip('[]')
+                        volume = [int(vol) for vol in volume_string.split(',')]
+                        clicked_index_start = loaded_info.index('selected:') + 11
+                        clicked_index_end = loaded_info.index(', bass_notes:')
+                        clicked_string = loaded_info[clicked_index_start:clicked_index_end].strip().strip('[]').split('], [')
+                        clicked = [[int(note) for note in row.split(', ')] for row in clicked_string]
+                        note_indices_index_start = loaded_info.index('bass_notes:') + 12
+                        note_indices_string = loaded_info[note_indices_index_start:].strip().strip('[]')
+                        note_indices = [int(note) for note in note_indices_string.split(', ')]
+                        index = 100
+                        save_menu = False
+                        load_menu = False
+                        playing = True
+                        typing = False
+        if event.type == pygame.TEXTINPUT and typing:
+            beat_name += event.text
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE and len(beat_name) > 0:
+                beat_name = beat_name[:-1]
                 
     beat_length = fps * 60 // bpm
 
