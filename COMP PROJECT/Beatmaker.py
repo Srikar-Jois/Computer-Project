@@ -87,10 +87,11 @@ def draw_save_menu(beat_name,typing):
     return exit_btn, saving_btn, entry_rect
 
 def draw_load_menu(index):
-    global volume, notes
+    global volume, notes, count
     loaded_clicked = []
     loaded_beats = 0
     loaded_bpm = 0
+    loaded_count = 0 
     pygame.draw.rect(screen,black,[0,0,WIDTH,HEIGHT])
     menu_text = label_font.render('Load Menu : Select Beat to Load',True,white)
     loading_btn = pygame.draw.rect(screen,gray,[WIDTH//2 - 200,HEIGHT*0.87,400,100],0,5)
@@ -104,6 +105,7 @@ def draw_load_menu(index):
     exit_text = label_font.render('Close',True,white)
     screen.blit(exit_text, (WIDTH-160,HEIGHT-70))
     loaded_rectangle = pygame.draw.rect(screen,gray,[190, 90, 1000, 600],5,5)
+    saved_beats.sort(key=lambda x: int(x.split('count:')[1].strip()), reverse=True)
     if 0 <= index < len(saved_beats):
         pygame.draw.rect(screen,light_gray,[190,100+index*50,1000,50])
     for beat in range(len(saved_beats)):
@@ -113,8 +115,11 @@ def draw_load_menu(index):
             screen.blit(row_text, (200, 100 + beat * 50))
             name_index_start = saved_beats[beat].index('name:') + 6
             name_index_end = saved_beats[beat].index(", beats: ")
+            count_index_start = saved_beats[beat].index('count:') + 7 
             name_text = medium_font.render(saved_beats[beat][name_index_start:name_index_end], True, white)
             screen.blit(name_text, (240, 100 + beat * 50))
+            count_text = medium_font.render(f'Count: {saved_beats[beat][count_index_start:]}', True, white)  # Render count
+            screen.blit(count_text, (700, 100 + beat * 50))
         if 0 <= index < len(saved_beats) and beat == index:
             beats_index_end = saved_beats[beat].index(', bpm:')
             loaded_beats = int(saved_beats[beat][name_index_end + 8:beats_index_end])
@@ -128,10 +133,14 @@ def draw_load_menu(index):
             loaded_volume_end = saved_beats[beat].index(', selected')+1
             loaded_volume_string = saved_beats[beat][loaded_volume_start+1:loaded_volume_end-2]
             loaded_volume = [int(vol) for vol in loaded_volume_string.strip().strip('[]').split(", ")]
+            loaded_count_start = saved_beats[beat].index('count:') + 7
+            loaded_count = int(saved_beats[beat][loaded_count_start:].strip()) 
 
             # Assign the loaded volume data to the 'volume' variable
             volume = loaded_volume
 
+    
+            
             for row in range(len(loaded_clicks_rows)):
                 loaded_clicks_row = (loaded_clicks_rows[row].split(', '))
                 for item in range(len(loaded_clicks_row)):
@@ -162,6 +171,8 @@ saved_beats = []
 file = open('saved_beats.txt','r')
 for line in file:
     saved_beats.append(line)
+count = 0
+
 
 notes = ['C','C#', 'D','D#', 'E', 'F','F#', 'G','G#', 'A','A#', 'B', 'C']
 note_indices = [0 for _ in range(beats)] 
@@ -367,7 +378,7 @@ while run:
             if save_menu:
                 if saving_button.collidepoint(event.pos):
                     file = open('saved_beats.txt', 'w')
-                    saved_beats.append(f'\nname: {beat_name}, beats: {beats}, bpm: {bpm},volume: {volume}, selected: {clicked}, bass_notes: {note_indices}')
+                    saved_beats.append(f'\nname: {beat_name}, beats: {beats}, bpm: {bpm},volume: {volume}, selected: {clicked}, bass_notes: {note_indices}, count: {count}')
                     for i in range(len(saved_beats)):
                         file.write(str(saved_beats[i]))
                     file.close()
@@ -382,6 +393,13 @@ while run:
                         saved_beats.pop(index)
                 if loading_button.collidepoint(event.pos):
                     if 0 <= index < len(saved_beats):
+                        saved_beats[index] = saved_beats[index].strip()  # Remove any leading/trailing whitespace
+                        count_index_start = saved_beats[index].index('count:') + 7
+                        count_value = int(saved_beats[index][count_index_start:].strip())
+                        count_value += 1
+                        saved_beats[index] = saved_beats[index][:count_index_start] + f' {count_value}'   # Update the count in the string
+                        count = count_value
+
                         loaded_info = saved_beats[index]
                         beats_index_start = loaded_info.index('beats:') + 7
                         beats_index_end = loaded_info.index(', bpm:')
@@ -398,13 +416,21 @@ while run:
                         clicked_string = loaded_info[clicked_index_start:clicked_index_end].strip().strip('[]').split('], [')
                         clicked = [[int(note) for note in row.split(', ')] for row in clicked_string]
                         note_indices_index_start = loaded_info.index('bass_notes:') + 12
-                        note_indices_string = loaded_info[note_indices_index_start:].strip().strip('[]')
+                        note_indices_index_end = loaded_info.index(', count:')
+                        note_indices_string = loaded_info[note_indices_index_start:note_indices_index_end].strip().strip('[]')
                         note_indices = [int(note) for note in note_indices_string.split(', ')]
+                        count_index_start = loaded_info.index('count:') + 7
+                        count = int(loaded_info[count_index_start:])
                         index = 100
                         save_menu = False
                         load_menu = False
                         playing = True
                         typing = False
+
+                        file = open('saved_beats.txt', 'w')
+                        for line in saved_beats:
+                            file.write(str(line) + '\n')
+                        file.close()
         if event.type == pygame.TEXTINPUT and typing:
             beat_name += event.text
         if event.type == pygame.KEYDOWN:
